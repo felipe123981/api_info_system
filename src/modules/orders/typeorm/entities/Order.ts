@@ -1,43 +1,33 @@
 import Balconist from '@modules/balconist/typeorm/entities/Balconist';
-import OrdersProducts from '@modules/orders/typeorm/entities/OrderProducts';
 import {
-  Column,
   CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
-  UpdateDateColumn,
 } from 'typeorm';
+import OrdersProducts from './OrderProducts';
 
-@Entity('products')
-class Product {
+@Entity('orders')
+class Order {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
-  name: string;
-
-  @Column('int')
-  price: number;
-
-  @Column('int')
-  quantity: number;
-
   @ManyToOne(() => Balconist)
   @JoinColumn({ name: 'balconist_id' })
-  @Column('string')
-  balconist_id: Balconist;
+  balconist: Balconist;
 
-  @OneToMany(() => OrdersProducts, order_products => order_products.product)
+  @OneToMany(() => OrdersProducts, order_products => order_products.order, {
+    cascade: true,
+  })
   order_products: OrdersProducts[];
 
   @CreateDateColumn()
   created_at: Date;
 
-  @UpdateDateColumn()
+  @CreateDateColumn()
   updated_at: Date;
 }
 
-export default Product;
+export default Order;
