@@ -3,44 +3,51 @@ import { AdminsRepository } from '../typeorm/repositories/AdminsRepository';
 //import { CustomersRepository } from '@modules/customers/typeorm/repositories/CustomersRepository'; // Importe corretamente o repositório de clientes
 import AppError from '@shared/errors/AppError';
 import Admin from '../typeorm/entities/Admin';
-import { hash } from 'bcryptjs';
+import { compare, hash } from 'bcryptjs';
+import { sign } from 'jsonwebtoken';
+import authConfig from '@config/auth';
 //import RedisCache from '@shared/cache/RedisCache';
 //import { UsersRepository } from '@modules/users/typeorm/repositories/UsersRepository';
 
 interface IRequest {
-  name: string;
   registration_number: number;
   password: string;
 }
+interface IResponse {
+  admin: Admin;
+  token: string;
+}
 
-class CreateAdminService {
+class CreateSessionService {
   public async execute({
-    name,
     registration_number,
     password,
-  }: IRequest): Promise<Admin> {
+  }: IRequest): Promise<IResponse> {
     const adminsRepository = getCustomRepository(AdminsRepository);
 
-    const adminExists =
-      await adminsRepository.findByNumber(registration_number);
-    if (adminExists) {
-      throw new AppError('Nobody found with this registry!');
+    const admin = await adminsRepository.findByNumber(registration_number);
+    if (!admin) {
+      throw new AppError('Incorrect user/password combination.', 401);
     }
 
-    const hashedPassword = await hash(password, 16);
+    const passwordConfirmed = await compare(password, admin.password);
     //const redisCache = new RedisCache();
-    const admin = adminsRepository.create({
-      name,
-      registration_number,
-      password: hashedPassword,
-    });
+    if (!passwordConfirmed) {
+      throw new AppError('Incorrect user/password combination.', 401);
+    }
+    const token = sign(
+      {},
+      authConfig.jwt.adm_secret,
+      {
+        subject: admin.id,
+        expiresIn: authConfig.jwt.expiresIn,
+      },
+    );
 
     //await redisCache.invalidate('api-vendas-PRODUCT_LIST');
 
-    await adminsRepository.save(admin);
-
-    return admin;
+    return { admin, token };
   }
 }
 
-export default CreateAdminService;
+export default CreateSessionService;
